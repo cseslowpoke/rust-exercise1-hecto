@@ -1,49 +1,32 @@
-use crossterm::terminal::{enable_raw_mode,disable_raw_mode, Clear, ClearType};
 use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
-use crossterm::execute;
-use std::io::stdout;
+mod terminal;
+use terminal::Terminal;
 
 pub struct Editor {
     should_quit: bool,
 }
 
 impl Editor {
-    pub fn default() -> Self {
-        Editor { should_quit: false }
+    pub const fn default() -> Self {
+        Self { should_quit: false }
     }
 
     pub fn run(&mut self) {
-        Self::initialize().unwrap();
+        Terminal::initialize().unwrap();
         let result = self.repl();
-        Self::terminate().unwrap();
+        Terminal::terminate().unwrap();
         result.unwrap();
     }
-    
-    fn initialize() -> Result<(), std::io::Error> {
-        enable_raw_mode()?;
-        Self::clear_screen()
-    }
-    
-    fn terminate() -> Result<(), std::io::Error> {
-        disable_raw_mode()
-    }
-
-    fn clear_screen() -> Result<(), std::io::Error> {
-        let mut stdout = stdout();
-        execute!(stdout, Clear(ClearType::All))
-    }
-    
+   
     pub fn repl(&mut self) -> Result<(), std::io::Error> {
-        enable_raw_mode()?;
         loop {
-            let event = read()?;
-            self.evaluate_event(&event);
             self.refresh_screen()?;
             if self.should_quit {
                 break;
             }
+            let event = read()?;
+            self.evaluate_event(&event);
         }
-        disable_raw_mode()?;
         Ok(())
     }
 
@@ -62,9 +45,21 @@ impl Editor {
 
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
         if self.should_quit {
-            Self::clear_screen()?;
+            Terminal::clear_screen()?;
             print!("Goodbye\r\n");
-        }   
+        } else {
+            Self::draw_rows()?;
+            Terminal::cursor_to(0, 0)?;
+        }
+        Ok(())
+    }
+
+    fn draw_rows() -> Result<(), std::io::Error> {
+        let (_width, height) = Terminal::size()?;
+        for y in 0..height {
+            let _ = Terminal::cursor_to(0, y);
+            print!("~");
+        }
         Ok(())
     }
 }
