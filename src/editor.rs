@@ -1,6 +1,7 @@
 use crossterm::event::{read, Event, Event::Key, KeyCode::Char, KeyEvent, KeyModifiers};
 mod terminal;
-use terminal::Terminal;
+use terminal::{Terminal, Position};
+use std::io::{stdout, Write};
 
 pub struct Editor {
     should_quit: bool,
@@ -44,22 +45,27 @@ impl Editor {
     }
 
     fn refresh_screen(&self) -> Result<(), std::io::Error> {
+        Terminal::hide_cursor()?;
         if self.should_quit {
             Terminal::clear_screen()?;
-            print!("Goodbye\r\n");
+            Terminal::print("Goodbye")?;
         } else {
             Self::draw_rows()?;
-            Terminal::cursor_to(0, 0)?;
+            Terminal::cursor_to(&Position { x: 0, y: 0 })?;
         }
+        Terminal::show_cursor()?;
         Ok(())
     }
 
     fn draw_rows() -> Result<(), std::io::Error> {
-        let (_width, height) = Terminal::size()?;
-        for y in 0..height {
-            let _ = Terminal::cursor_to(0, y);
-            print!("~");
+        let size = Terminal::size()?;
+        let mut stdout = stdout();
+        for y in 0..size.height {
+            let _ = Terminal::cursor_to(&Position { x: 0, y });
+            Terminal::print("~")?;
         }
+        let _ = Terminal::cursor_to(&Position { x: 0, y: 0});
+        stdout.flush()?;
         Ok(())
     }
 }
